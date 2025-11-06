@@ -6,8 +6,16 @@
 }
 
 /* ********** Reset Styles ********** */
+html {
+  height: 100%;
+}
+
 body {
   font-family: "Raleway", sans-serif;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  margin: 0;
 }
 
 a {
@@ -69,6 +77,11 @@ a:hover {
 }
 
 /* ********** My Styles ********** */
+main {
+  flex: 1;
+  min-height: 100vh;
+}
+
 .bg-gradient-blue-green {
   background-color: rgba(83, 184, 152, 1);
   background-image: linear-gradient(
