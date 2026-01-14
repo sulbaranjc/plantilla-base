@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    image: proyecto-production:latest
+    container_name: proyecto-production
+    environment:
+      - VIRTUAL_HOST=plantilla.docker.sulbaranjc.com
+      - VIRTUAL_PORT=80
+    networks:
+      - proxy
+    restart: unless-stopped
+
+networks:
+  proxy:
+    external: true
