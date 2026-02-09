@@ -6,7 +6,7 @@
 
 Una plantilla base minimalista y limpia para proyectos web con Bootstrap 5, optimizada y lista para usar.
 
-## 📋 Descripción
+## 📋 Descripción by JC
 
 Esta es una plantilla base moderna y responsiva construida con Bootstrap 5.2.3. Incluye una navegación sticky, diseño responsivo, y un sistema de estilos personalizado con variables CSS. Ideal para iniciar proyectos web rápidamente con una estructura limpia y organizada.
 
