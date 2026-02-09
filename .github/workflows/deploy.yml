@@ -1,37 +1,122 @@
-name: Deploy to Production
 
+######################################################################
+# NOMBRE DEL WORKFLOW
+# Aparece en la pestaña "Actions" de GitHub
+name: Deploy PlantillaBase
+
+
+######################################################################
+# TRIGGER (DISPARADOR): ¿Cuándo se ejecuta este workflow?
+######################################################################
 on:
   push:
     branches:
-      - deploy
+      - deploy  # Rama de producción/despliegue
+    # ESTRATEGIA DE RAMAS:
+    # - main: Desarrollo activo, testing
+    # - deploy: Código listo para producción
+    # Al hacer push a 'deploy', se dispara automáticamente el despliegue
 
+
+######################################################################
+# JOBS: Trabajos a ejecutar (pueden correr en paralelo o secuencialmente)
+######################################################################
 jobs:
   deploy:
+    # RUNNER: Máquina virtual donde se ejecuta el job
+    # ubuntu-latest: Última versión estable de Ubuntu en GitHub Actions
     runs-on: ubuntu-latest
-
     steps:
-      - name: Deploy on Docker Server
+      # ------------------------------------------------------------------
+      # STEP 1: Despliegue remoto vía SSH
+      # ------------------------------------------------------------------
+      - name: Deploy real en servidor Docker
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           script: |
+            # BASH STRICT MODE
             set -e
 
+            # --------------------------------------------------------------
+            # PASO 1: Navegar al directorio del proyecto
+            # --------------------------------------------------------------
+            echo "📌 Entrando al proyecto"
             cd ${{ secrets.DEPLOY_PATH }}
 
-            echo "== Rama y commit =="
-            git branch --show-current
-            git log -1 --oneline
-
-            echo "== Sincronizando repo =="
-            git fetch origin
-            git checkout -B production origin/production
-            git reset --hard origin/production
+            # --------------------------------------------------------------
+            # PASO 2: Limpieza del repositorio Git
+            # --------------------------------------------------------------
+            echo "📌 Limpiando repo (evita bloqueos por archivos sueltos)"
+            git reset --hard
             git clean -fd
 
-            echo "== Docker deploy =="
+            # --------------------------------------------------------------
+            # PASO 3: Sincronización con repositorio remoto
+            # --------------------------------------------------------------
+            echo "📌 Sincronizando con origin/deploy"
+            git fetch origin
+            git checkout -B deploy origin/deploy
+            git pull --ff-only origin deploy
+
+            # --------------------------------------------------------------
+            # PASO 4: Verificación (debugging)
+            # --------------------------------------------------------------
+            echo "📌 Rama activa:"
+            git branch --show-current
+            echo "📌 Commit desplegado:"
+            git log -1 --oneline
+
+            # --------------------------------------------------------------
+            # PASO 5: Despliegue con Docker
+            # --------------------------------------------------------------
+            echo "🐳 Recreando contenedores Docker"
             docker compose down
-            docker compose build --no-cache
-            docker compose up -d
+            docker compose up -d --build
+
+######################################################################
+# FLUJO COMPLETO DEL DESPLIEGUE:
+# 1. DESARROLLADOR: Hace cambios en código localmente
+# 2. DESARROLLADOR: Commit y push a rama 'deploy'
+#    git push origin deploy
+# 3. GITHUB: Detecta push a rama 'deploy'
+# 4. GITHUB ACTIONS: Inicia workflow automáticamente
+# 5. RUNNER (Ubuntu): Se conecta al servidor vía SSH
+# 6. SERVIDOR: Actualiza código con git pull
+# 7. SERVIDOR: Reconstruye imagen Docker con código nuevo
+# 8. SERVIDOR: Reinicia contenedor con imagen actualizada
+# 9. REVERSE PROXY: Redirecciona tráfico al nuevo contenedor
+# 10. USUARIOS: Ven la versión actualizada instantáneamente
+# TIEMPO TOTAL: ~30-60 segundos desde push hasta deploy
+######################################################################
+
+######################################################################
+# VENTAJAS DE ESTE ENFOQUE:
+# ✅ Automatización total: Sin intervención manual
+# ✅ Rapidez: Deploy en segundos
+# ✅ Consistencia: Mismo proceso cada vez
+# ✅ Trazabilidad: Logs completos en GitHub Actions
+# ✅ Rollback fácil: Revertir commit y re-desplegar
+# ✅ Seguridad: Secrets protegidos, no expuestos en código
+# ✅ Escalabilidad: Fácil añadir más pasos (tests, notificaciones)
+######################################################################
+
+######################################################################
+# CONFIGURACIÓN INICIAL REQUERIDA:
+# 1. En GitHub (Settings → Secrets):
+#    - SSH_HOST: IP o dominio del servidor
+#    - SSH_USER: Usuario SSH
+#    - SSH_KEY: Clave privada SSH
+#    - DEPLOY_PATH: Ruta del proyecto en servidor
+# 2. En el servidor:
+#    - Clave pública SSH en ~/.ssh/authorized_keys
+#    - Docker y Docker Compose instalados
+#    - Red 'proxy' creada: docker network create proxy
+#    - Nginx-proxy corriendo (reverse proxy)
+#    - Repositorio clonado en DEPLOY_PATH
+# 3. DNS configurado:
+#    - Dominio apuntando a IP del servidor
+#    - Ejemplo: plantilla.docker.sulbaranjc.com → 192.168.1.100
+######################################################################
